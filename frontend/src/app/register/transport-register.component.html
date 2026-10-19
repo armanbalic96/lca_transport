@@ -1,0 +1,91 @@
+<app-shell>
+  <div class="breadcrumb-row">
+    <span>Data management</span><app-mi name="chevron_right" [size]="14" class="sep" color="#9AA3AF" />
+    <span>Transport</span><app-mi name="chevron_right" [size]="14" class="sep" color="#9AA3AF" />
+    <span class="active">Transports</span>
+  </div>
+
+  <div class="page-header">
+    <div class="ph-row">
+      <div>
+        <h1>Transports</h1>
+        <div class="ph-desc">Register of transport calculations. Each transport stores its cargo, route and GWP result, and can be reopened and edited.</div>
+      </div>
+      <div class="ph-actions">
+        <button class="btn primary lg" (click)="openDialog()"><app-mi name="add" [size]="20" color="#fff" />New transport</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    @if (error()) {
+      <div class="val-row error" style="margin-bottom:16px"><app-mi name="error" [size]="18" /><span class="val-text">{{ error() }}</span></div>
+    }
+
+    @if (!loading() && items().length === 0 && !error()) {
+      <div class="card reg-empty">
+        <div class="reg-empty-ic"><app-mi name="local_shipping" [size]="32" color="var(--color-primary)" /></div>
+        <div class="card-h2">No transports yet</div>
+        <div class="card-desc" style="font-size:13px;max-width:420px;text-align:center;line-height:1.5">Create a transport to define cargo, plan the route and calculate its GWP. It is saved here as you work.</div>
+        <button class="btn primary" (click)="openDialog()" style="margin-top:8px"><app-mi name="add" [size]="18" color="#fff" />New transport</button>
+      </div>
+    } @else if (items().length > 0) {
+      <div class="reg-toolbar">
+        <div class="reg-search">
+          <app-mi name="search" [size]="18" color="#667085" />
+          <input [value]="q()" (input)="q.set($any($event.target).value)" placeholder="Search by name or location" />
+        </div>
+        <span class="reg-count">{{ list().length }} of {{ items().length }} transport{{ items().length !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <div class="card reg-table" role="table">
+        <div class="reg-row reg-head" role="row">
+          <span>Name</span><span>Route</span><span>Mode</span><span class="num">Cargo</span><span class="num">GWP-total</span><span>Status</span><span>Last updated</span><span></span>
+        </div>
+        @for (t of list(); track t.id) {
+          <div class="reg-row" role="row" (click)="open(t.id)">
+            <span class="reg-name">{{ t.name }}</span>
+            <span class="reg-route">
+              @if (t.summary?.from) {
+                {{ city(t.summary?.from) }}<app-mi name="arrow_forward" [size]="14" color="#9AA3AF" />{{ city(t.summary?.to) }}
+              } @else { — }
+            </span>
+            <span class="reg-mode">
+              @if (t.summary?.mode) {
+                <app-mode-icon [mode]="t.summary!.mode!" [size]="16" />
+              } @else if (t.summary?.modeLabel) {
+                <app-mi name="alt_route" [size]="16" color="var(--color-primary)" />
+              }
+              {{ t.summary?.modeLabel || '—' }}
+            </span>
+            <span class="num">{{ t.summary?.massTonnes != null ? regNum(t.summary?.massTonnes, 1) + ' t' : '—' }}</span>
+            <span class="num reg-gwp">
+              @if (isDone(t) && t.summary?.gwp != null) {
+                {{ regNum(t.summary?.gwp, 1) }}<span class="u">kg CO₂e</span>
+              } @else { — }
+            </span>
+            <span><span class="reg-status" [class.done]="isDone(t)">{{ isDone(t) ? 'Calculated' : 'Draft · step ' + ((t.summary?.maxReached ?? 0) + 1) + ' of 3' }}</span></span>
+            <span class="reg-date">{{ regDate(t.updatedAt) }}</span>
+            <span class="reg-actions" (click)="$event.stopPropagation()">
+              @if (confirmId() === t.id) {
+                <button class="btn sm" (click)="confirmId.set(null)">Cancel</button>
+                <button class="btn sm reg-del" (click)="remove(t.id)">Delete</button>
+              } @else {
+                <button class="icon-btn" title="Duplicate" aria-label="Duplicate" (click)="duplicate(t.id)"><app-mi name="content_copy" [size]="18" color="#475467" /></button>
+                <button class="icon-btn" title="Delete" aria-label="Delete" (click)="confirmId.set(t.id)"><app-mi name="delete" [size]="18" color="#475467" /></button>
+              }
+            </span>
+          </div>
+        }
+        @if (list().length === 0) {
+          <div class="reg-none">No transports match “{{ q() }}”.</div>
+        }
+      </div>
+    }
+  </div>
+</app-shell>
+
+@if (dialogOpen()) {
+  <app-new-transport-dialog [existingNames]="names()" [busy]="creating()" [serverError]="createError()"
+                            (cancel)="dialogOpen.set(false)" (add)="create($event)" />
+}

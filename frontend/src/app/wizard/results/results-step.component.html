@@ -1,0 +1,131 @@
+<div class="wizard-step">
+  <div class="step-head">
+    <h2>Results</h2>
+    <div class="desc">Total transport GWP for the shipment, with per-leg breakdown and a comparison of alternative transport modes.</div>
+  </div>
+
+  <div class="result-tabs">
+    <button class="result-tab" [class.active]="tab() === 'results'" (click)="tab.set('results')"><app-mi name="assessment" [size]="18" />Results</button>
+    <button class="result-tab" [class.active]="tab() === 'stats'" (click)="tab.set('stats')"><app-mi name="query_stats" [size]="18" />Statistical analysis</button>
+  </div>
+
+  @if (result(); as r) {
+    @if (tab() === 'stats') {
+      <div class="seg stats-seg" role="tablist" aria-label="Analysis view">
+        <button [class.active]="statsView() === 'route'" (click)="statsView.set('route')">Route statistics</button>
+        <button [class.active]="statsView() === 'indicators'" (click)="statsView.set('indicators')">EN 15804+A2 indicators</button>
+      </div>
+      @if (statsView() === 'route') {
+        <app-route-stats [impact]="r.impact" [stats]="r.statistics" />
+      } @else {
+        <app-indicator-table [indicators]="r.indicators" [sourceLabel]="source().label" />
+      }
+    } @else {
+      <div class="totals">
+        <div class="metric highlight">
+          <div class="metric-top"><div class="metric-label">Total transport GWP</div></div>
+          <div class="metric-val">{{ r.impact.gwp | fmt }}<span class="metric-unit">kg CO₂-eq</span></div>
+          <div class="metric-sub">{{ totalSub() }}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-top"><div class="metric-label">Distance</div></div>
+          <div class="metric-val">{{ r.impact.distanceKm | fmt }}<span class="metric-unit">km</span></div>
+          <div class="metric-sub">{{ distanceSub() }}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-top"><div class="metric-label">Per kg of product</div></div>
+          <div class="metric-val">{{ r.impact.gwpPerKg | fmt: 4 }}<span class="metric-unit">kg CO₂-eq/kg</span></div>
+          <div class="metric-sub">{{ r.impact.gwpPerKg * 1000 | fmt: 2 }} g CO₂-eq per kg</div>
+        </div>
+      </div>
+
+      <div class="results-grid">
+        <div class="card pad-lg">
+          <div class="card-head"><div><div class="card-h3">Per-leg breakdown</div><div class="card-desc">EF source: {{ source().label }} — {{ source().sub }}</div></div></div>
+          @if (state().multi) {
+            <div class="bd-row">
+              <div class="bd-tag">All</div>
+              <div><div class="bd-title">{{ r.impact.legCount }} leg{{ r.impact.legCount !== 1 ? 's' : '' }} (multi-leg route)</div><div class="bd-sub">Aggregated over {{ r.impact.distanceKm | fmt: 0 }} km · {{ r.impact.tkm | fmt: 0 }} t·km</div></div>
+              <div class="bd-val">{{ r.impact.gwp | fmt: 1 }}<span class="u">kg CO₂e</span></div>
+            </div>
+            @for (l of r.impact.perLeg; track l.key) {
+              <div class="bd-row sub-row">
+                <div class="sub-idx">{{ l.key }}</div>
+                <div>
+                  <div class="bd-title" style="font-weight:500">{{ l.modeLabel }}@if (l.ret) {<span class="ret-pill">return</span>}</div>
+                  <div class="bd-sub mono">{{ city(l.from) }} → {{ city(l.to) }} · {{ l.distanceKm | fmt: 0 }} km</div>
+                </div>
+                <div class="bd-val" style="font-size:13px">{{ l.gwp | fmt: 1 }}<span class="u">kg</span></div>
+              </div>
+            }
+          } @else if (direct(); as d) {
+            <div class="bd-row">
+              <div class="bd-tag">L1</div>
+              <div>
+                <div class="bd-title">{{ d.modeLabel }}</div>
+                <div class="bd-sub mono">{{ r.impact.massTonnes | fmt: 2 }} t × {{ d.distanceKm | fmt: 0 }} km × {{ d.baseEf.toFixed(3) }}{{ d.loadAdj > 1.01 ? ' × ' + d.loadAdj.toFixed(2) + ' (load)' : '' }}</div>
+                <div class="bd-sub">{{ d.from && d.to ? city(d.from) + ' → ' + city(d.to) : '—' }}</div>
+              </div>
+              <div class="bd-val">{{ d.gwp | fmt: 1 }}<span class="u">kg CO₂e</span></div>
+            </div>
+          }
+          <div class="bd-row" style="border-top:1px solid var(--color-border);padding-top:14px">
+            <div class="bd-tag neutral">FU</div>
+            <div><div class="bd-title">Per kg of product</div><div class="bd-sub">Functional-unit normalised result</div></div>
+            <div class="bd-val">{{ r.impact.gwpPerKg | fmt: 4 }}<span class="u">kgCO₂e/kg</span></div>
+          </div>
+        </div>
+
+        <div class="card pad-lg">
+          <div class="card-head"><div><div class="card-h3">Alternative modes</div><div class="card-desc">If you changed the transport mode for this route &amp; load</div></div></div>
+          @for (alt of ranked(); track alt.mode; let i = $index; let last = $last) {
+            <div class="cmp-row" [class.current]="isCurrent(alt)" [class.best]="i === 0 && !isCurrent(alt)" [class.worst]="last && !isCurrent(alt)">
+              <div class="cmp-ic"><app-mode-icon [mode]="alt.mode" [size]="16" /></div>
+              <div>
+                <div class="cmp-name">{{ alt.modeLabel }}@if (isCurrent(alt)) {<span class="you">CURRENT</span>}</div>
+                <div class="cmp-delta" [style.color]="isCurrent(alt) ? 'var(--color-fg-4)' : alt.deltaPct > 0 ? '#B4503B' : 'var(--color-primary)'">
+                  {{ isCurrent(alt) ? (alt.distanceKm | fmt: 0) + ' km' : (alt.deltaPct > 0 ? '+' : '') + (alt.deltaPct | fmt: 0) + '%' }}
+                </div>
+              </div>
+              <div class="cmp-bar-wrap"><div class="cmp-bar" [style.width.%]="cmpMax() > 0 ? (alt.gwp / cmpMax() * 100 > 2 ? alt.gwp / cmpMax() * 100 : 2) : 2"></div></div>
+              <div class="cmp-val">{{ alt.gwp | fmt: 1 }}<span style="font-size:10px;color:var(--color-fg-4);margin-left:3px">kg</span></div>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (r.comparison.recommendations.length > 0) {
+        <div class="reco-banner">
+          <div class="reco-ic"><app-mi name="eco" [size]="22" color="#fff" /></div>
+          <div class="reco-body">
+            <div class="reco-title">Low-carbon recommendation</div>
+            <div class="reco-text">
+              {{ r.comparison.recommendations[0].text }}
+              @if (r.comparison.best && !r.comparison.isCurrentBest && r.comparison.savingsVsCurrent > 0) {
+                Lowest-impact option is <strong>{{ r.comparison.best.modeLabel }}</strong> — up to {{ r.comparison.savingsVsCurrent | fmt: 0 }}% lower than your current route.
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="export-row">
+        <div class="export-l">
+          <app-mi name="ios_share" [size]="18" color="#475467" />
+          <span>Export this scenario for reports or EPD documentation</span>
+        </div>
+        <div class="export-btns">
+          <button class="btn" (click)="copyReport()"><app-mi [name]="copied() ? 'check' : 'content_copy'" [size]="16" color="#475467" />{{ copied() ? 'Copied' : 'Copy report' }}</button>
+          <button class="btn" (click)="exportAs('csv')"><app-mi name="table_view" [size]="16" color="#475467" />CSV</button>
+          <button class="btn" (click)="exportAs('json')"><app-mi name="data_object" [size]="16" color="#475467" />JSON</button>
+        </div>
+      </div>
+
+      @if (ref.config().aiAvailable) {
+        <app-ai-panels />
+      }
+    }
+  } @else {
+    <div class="card pad-lg"><div class="card-desc">Calculating…</div></div>
+  }
+</div>

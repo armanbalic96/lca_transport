@@ -1,0 +1,96 @@
+<div class="card pad-lg" style="max-width:760px">
+  <div class="card-head">
+    <div>
+      <div class="card-h3">Cargo items</div>
+      <div class="card-desc">Add every distinct material being transported. Each item can be entered by mass or by volume (with a density lookup). The transported mass is the sum of all items.</div>
+    </div>
+  </div>
+
+  <div class="cargo-list">
+    @for (item of items(); track item.id; let i = $index) {
+      <div class="cargo-item">
+        <div class="cargo-item-head">
+          <span class="cargo-idx">{{ i + 1 }}</span>
+          <div class="cargo-item-title">{{ material(item).name }}</div>
+          <div class="cargo-item-mass">{{ massT(item) | fmt: (massT(item) < 1 ? 3 : 2) }} t</div>
+          <div class="seg cargo-seg">
+            <button [class.active]="!item.byVolume" (click)="update(item.id, { byVolume: false })">Mass</button>
+            <button [class.active]="item.byVolume" (click)="update(item.id, { byVolume: true })">Volume</button>
+          </div>
+          <button class="icon-btn" title="Remove item" (click)="remove(item.id)" [disabled]="items().length <= 1"
+                  [style.opacity]="items().length <= 1 ? .35 : null" [style.pointerEvents]="items().length <= 1 ? 'none' : null">
+            <app-mi name="close" [size]="18" />
+          </button>
+        </div>
+
+        <div class="cargo-item-body">
+          <div class="field" style="margin-bottom:0">
+            <span class="label">Material</span>
+            <select class="lca-select" [value]="item.material" (change)="update(item.id, { material: $any($event.target).value })">
+              @for (m of materials(); track m.id) {
+                <option [value]="m.id" [selected]="m.id === item.material">{{ m.name }} · {{ m.density }} kg/m³</option>
+              }
+            </select>
+          </div>
+
+          @if (!item.byVolume) {
+            <div class="field" style="margin-bottom:0">
+              <span class="label">Mass</span>
+              <div class="input-unit">
+                <input type="number" min="0" [step]="item.massUnit === 'kg' || item.massUnit === 'lb' ? 1 : 0.1"
+                       [value]="displayMass(item)" (input)="setDisplayMass(item, $any($event.target).value)" />
+                <select [value]="item.massUnit" (change)="update(item.id, { massUnit: $any($event.target).value })" aria-label="Mass unit">
+                  @for (u of massUnits(); track u.id) {
+                    <option [value]="u.id" [selected]="u.id === item.massUnit">{{ u.short }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          } @else {
+            <div class="field" style="margin-bottom:0">
+              <span class="label">Volume</span>
+              <div class="input-unit">
+                <input type="number" min="0" step="0.1" [value]="item.volume" (input)="update(item.id, { volume: +$any($event.target).value || 0 })" />
+                <select disabled><option>m³</option></select>
+              </div>
+              <div class="field-help mono">{{ item.volume }} m³ × {{ material(item).density }} kg/m³ = {{ massT(item) | fmt: 2 }} t</div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <button class="btn outline cargo-add" (click)="add()">
+    <app-mi name="add" [size]="18" color="var(--color-primary)" />Add cargo item
+  </button>
+
+  @if (summary(); as sum) {
+    <div class="cargo-total">
+      <div class="cargo-total-top">
+        <div>
+          <div class="ct-label">Total transported mass</div>
+          <div class="ct-val">{{ sum.totalTonnes | fmt: 2 }}<span class="u">t</span></div>
+        </div>
+        <div class="ct-meta">{{ sum.count }} item{{ sum.count !== 1 ? 's' : '' }} · {{ sum.byMaterial.length }} material{{ sum.byMaterial.length !== 1 ? 's' : '' }}</div>
+      </div>
+      @if (sum.byMaterial.length > 1) {
+        <div class="cargo-split-bar">
+          @for (m of sum.byMaterial; track m.name; let i = $index) {
+            <div class="cargo-split-seg" [style.width.%]="m.pct" [style.background]="'var(' + materialColors[i % 6] + ')'"
+                 [title]="m.name + ' ' + (m.tonnes | fmt: 2) + ' t'"></div>
+          }
+        </div>
+        <div class="cargo-split-legend">
+          @for (m of sum.byMaterial; track m.name; let i = $index) {
+            <span class="csl-item"><i class="csl-dot" [style.background]="'var(' + materialColors[i % 6] + ')'"></i>{{ m.name }} · {{ m.tonnes | fmt: 2 }} t ({{ m.pct | fmt: 0 }}%)</span>
+          }
+        </div>
+      }
+      <div class="note" style="margin-top:14px">
+        <app-mi name="info" [size]="16" />
+        <span>The functional-unit result (kg CO₂-eq per kg) is normalised over the total transported mass. Each leg moves the full cargo unless you model partial loads separately.</span>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,33 @@
+@host = http://localhost:5081
+
+GET {{host}}/api/referencedata
+Accept: application/json
+
+###
+
+POST {{host}}/api/calculations
+Content-Type: application/json
+
+{
+  "source": "en15804",
+  "cargoItems": [
+    { "byVolume": false, "mass": 18, "massUnit": "t", "material": "concrete", "volume": 1 },
+    { "byVolume": false, "mass": 6, "massUnit": "t", "material": "steel", "volume": 1 }
+  ],
+  "from": { "label": "Mo i Rana, Norway", "country": "Norway", "lat": 66.314, "lon": 14.142 },
+  "to": { "label": "Oslo, Norway", "country": "Norway", "lat": 59.913, "lon": 10.752 },
+  "mode": "truck-large",
+  "loadFactor": 61,
+  "multi": false,
+  "legs": []
+}
+
+###
+
+GET {{host}}/api/transports
+Accept: application/json
+
+###
+
+GET {{host}}/api/geo/autocomplete?q=Hamburg
+Accept: application/json

@@ -1,0 +1,13 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+backend/TransportGwp.Api/transports.db*
+
+# Logs
+*.log
+
+# Local working copies from the prototype conversion (never commit: _prototype contains a third-party API key)
+_prototype/
+transport-gwp/

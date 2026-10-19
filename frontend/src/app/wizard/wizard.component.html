@@ -1,0 +1,65 @@
+<app-shell>
+  <div class="breadcrumb-row">
+    <span>Data management</span><app-mi name="chevron_right" [size]="14" class="sep" color="#9AA3AF" />
+    <a routerLink="/">Transports</a><app-mi name="chevron_right" [size]="14" class="sep" color="#9AA3AF" />
+    <span class="active">{{ store.name() || 'Transport GWP calculator' }}</span>
+  </div>
+
+  <div class="page-header">
+    <div class="ph-row">
+      <div>
+        <h1>{{ store.name() || 'Transport GWP calculator' }}</h1>
+        <div class="ph-desc">
+          A guided, three-step workflow to calculate transport emissions for a shipment — in line with EN 15804+A2. Changes are saved to the transport register automatically.
+          @switch (store.saving()) {
+            @case ('saving') { <span class="save-state">Saving…</span> }
+            @case ('saved') { <span class="save-state">Saved</span> }
+            @case ('error') { <span class="save-state" style="color:var(--color-danger)">Not saved — check the connection</span> }
+          }
+        </div>
+      </div>
+      <div class="ph-actions">
+        <button class="btn" (click)="exit()"><app-mi name="arrow_back" [size]="18" color="#475467" />All transports</button>
+      </div>
+    </div>
+  </div>
+
+  @if (store.loadError()) {
+    <div class="content">
+      <div class="val-row error"><app-mi name="error" [size]="18" /><span class="val-text">{{ store.loadError() }}</span></div>
+    </div>
+  } @else if (store.loaded()) {
+    <app-stepper [step]="store.step()" [maxReached]="store.maxReached()" (jump)="store.goTo($event)" />
+
+    <div class="content">
+      @switch (store.step()) {
+        @case (0) {
+          <div class="wizard-step">
+            <div class="step-head">
+              <h2>Cargo definition</h2>
+              <div class="desc">List every distinct material being transported. The total mass drives the GWP calculation, and the functional-unit result is normalised over the combined cargo.</div>
+            </div>
+            <app-cargo-editor [items]="store.state().cargoItems" [summary]="store.result()?.cargo ?? null" (itemsChange)="store.setCargo($event)" />
+          </div>
+        }
+        @case (1) { <app-route-step /> }
+        @case (2) { <app-results-step /> }
+      }
+
+      <div class="wizard-foot">
+        <div class="foot-left">
+          @if (store.step() > 0) {
+            <button class="btn" (click)="store.back()"><app-mi name="arrow_back" [size]="18" color="#475467" />Back</button>
+          }
+          <span class="step-count">Step {{ store.step() + 1 }} of {{ stepCount }}</span>
+        </div>
+        @if (!store.isLast()) {
+          <button class="btn primary lg" (click)="store.next()">
+            Continue
+            <app-mi name="arrow_forward" [size]="18" color="#fff" />
+          </button>
+        }
+      </div>
+    </div>
+  }
+</app-shell>

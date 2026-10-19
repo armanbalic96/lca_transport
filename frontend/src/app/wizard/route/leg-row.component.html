@@ -1,0 +1,118 @@
+<div class="leg-row" [class.expanded]="expanded()">
+  <div class="leg-row-main">
+    <div class="leg-idx" [style.background]="color()" [style.color]="color() ? '#fff' : null"
+         [title]="color() ? 'Matches this leg\'s colour on the route map' : ''">{{ index() + 1 }}</div>
+    <div class="leg-route">
+      <app-location-picker [value]="leg().from" (valueChange)="setFrom($event)" placeholder="From…" [compact]="true" />
+      <span class="leg-arrow"><app-mi name="arrow_forward" [size]="16" /></span>
+      <app-location-picker [value]="leg().to" (valueChange)="setTo($event)" placeholder="To…" [compact]="true" />
+    </div>
+    <select class="lca-select sm leg-mode" [value]="leg().mode" (change)="onModeChange($any($event.target).value)">
+      @for (m of modes(); track m) {
+        <option [value]="m" [selected]="m === leg().mode">{{ factors()[m].label }}</option>
+      }
+    </select>
+    <div class="leg-stat dist">
+      <div class="leg-stat-v">{{ (calc()?.distanceKm ?? 0) > 0 ? calc()!.distanceKm.toFixed(0) : '—' }}<span class="u">km</span></div>
+      <div class="leg-stat-l">distance</div>
+    </div>
+    <div class="leg-stat">
+      <div class="leg-stat-v">{{ (calc()?.gwp ?? 0) > 0 ? calc()!.gwp.toFixed(1) : '—' }}<span class="u">kg</span></div>
+      <div class="leg-stat-l">leg GWP</div>
+    </div>
+    <div class="leg-actions">
+      <button class="icon-btn" [title]="expanded() ? 'Collapse' : 'More options'" (click)="expanded.set(!expanded())">
+        <app-mi [name]="expanded() ? 'expand_less' : 'expand_more'" [size]="20" />
+      </button>
+      <button class="icon-btn" title="Remove leg" (click)="remove.emit()"><app-mi name="close" [size]="18" /></button>
+    </div>
+  </div>
+
+  @if (!isRoad()) {
+    <div class="leg-manual">
+      <span class="label">Distance</span>
+      <app-distance-input [compact]="true" [value]="leg().manualDist" [unit]="leg().distUnit" [estimateKm]="estimateKm()"
+                          (changed)="setDistance($event)" />
+      <span class="field-help" style="margin-top:0">{{ hasManual() ? 'Entered distance used' : 'No road routing for this mode — enter the distance, or leave empty to use the estimate' }}</span>
+    </div>
+  }
+
+  @if (expanded()) {
+    <div class="leg-detail">
+      <div class="leg-detail-grid">
+        <div class="field" style="margin-bottom:0">
+          <span class="label">Vehicle type</span>
+          <select class="lca-select sm" [value]="leg().vehicle" (change)="set({ vehicle: $any($event.target).value })">
+            @for (v of vehicles(); track v.id) {
+              <option [value]="v.id" [selected]="v.id === leg().vehicle">{{ v.label }} · ×{{ v.mult.toFixed(2) }}</option>
+            }
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span class="label">Fuel / energy</span>
+          <select class="lca-select sm" [value]="leg().fuel" (change)="set({ fuel: $any($event.target).value })">
+            @for (f of fuels(); track f.id) {
+              <option [value]="f.id" [selected]="f.id === leg().fuel">{{ f.label }} · ×{{ f.mult.toFixed(2) }}</option>
+            }
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <app-slider label="Load factor" [value]="leg().load" [min]="15" [max]="100" [step]="1" unit="%" (valueChange)="set({ load: $event })" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <span class="label">Return trip</span>
+          <div class="toggle-row">
+            <app-toggle [on]="leg().ret" (toggled)="set({ ret: !leg().ret })" />
+            <span class="toggle-lbl">{{ leg().ret ? 'Empty return counted (×2)' : 'One-way only' }}</span>
+          </div>
+        </div>
+      </div>
+
+      @if (leg().routeInfo; as info) {
+        <div class="groute">
+          <div class="groute-head">
+            <app-mi name="alt_route" [size]="16" />
+            Google route details
+            <span class="groute-sum">
+              {{ leg().roadKm ? leg().roadKm!.toFixed(0) + ' km' : '' }}{{ info.seconds ? ' · ' + duration(info.seconds) : '' }}
+            </span>
+          </div>
+          @for (f of info.ferries; track $index) {
+            <div class="groute-row">
+              <app-mi name="directions_boat" [size]="16" />
+              <span class="gr-name">{{ f.text }} ferry</span>
+              <span class="gr-val">{{ f.km >= 0.1 ? f.km.toFixed(1) + ' km' : '' }}{{ f.minutes ? ' · ' + f.minutes + ' min' : '' }}</span>
+            </div>
+          }
+          @if (info.tollCount > 0) {
+            <div class="groute-row">
+              <app-mi name="toll" [size]="16" />
+              <span class="gr-name">Toll road sections</span>
+              <span class="gr-val">{{ info.tollCount }}</span>
+            </div>
+          }
+          @if (info.ferries.length === 0 && !info.tollCount) {
+            <div class="groute-row plain"><span class="gr-name">No ferries or tolls on this route.</span></div>
+          }
+          @if (info.ferries.length > 0) {
+            <div class="groute-note">Ferry sections are driven distance in Google's route. The emission factor for this leg still applies to the whole distance — split the leg if the crossing should be counted as sea transport.</div>
+          }
+        </div>
+      }
+
+      @if (calc(); as c) {
+        <div class="leg-formula">
+          <span class="leg-formula-tag">Calculation</span>
+          <span>
+            {{ massTonnes().toFixed(2) }} t × {{ c.distanceKm.toFixed(0) }} km × {{ c.baseEf.toFixed(3) }}
+            @if (c.vehicleMult !== 1) { × {{ c.vehicleMult.toFixed(2) }}<sub>veh</sub> }
+            @if (c.fuelMult !== 1) { × {{ c.fuelMult.toFixed(2) }}<sub>fuel</sub> }
+            @if (c.loadAdj > 1.01) { × {{ c.loadAdj.toFixed(2) }}<sub>load</sub> }
+            @if (c.trips > 1) { × {{ c.trips }}<sub>return</sub> }
+            = <strong>{{ c.gwp.toFixed(2) }} kg CO₂e</strong>
+          </span>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,45 @@
+<div class="map-wrap">
+  @if (failed()) {
+    <div class="map-el" style="display:grid;place-items:center;background:var(--color-bg-alt);color:var(--color-fg-4);font-family:var(--font-ui);font-size:13px;text-align:center;padding:16px">
+      Map unavailable — set GoogleMaps:BrowserApiKey on the API to show the route map.
+    </div>
+  }
+  <div #mapEl class="map-el" [style.display]="failed() ? 'none' : null"></div>
+
+  @if (hasAlts() && !tip()) {
+    <div class="map-hint"><app-mi name="touch_app" [size]="15" />Grey lines are alternative routes — hover for details, click to use one</div>
+  }
+
+  @if (tip(); as t) {
+    <div class="route-tip" [style.left.px]="tipPos(t).left" [style.top.px]="tipPos(t).top">
+      <div class="rt-head">
+        <span class="rt-dot" [style.background]="t.chosen ? t.seg.color : '#98A2B3'"></span>
+        {{ t.seg.label }}{{ t.chosen ? ' · selected' : '' }}
+        @if (t.alt.labels.includes('FUEL_EFFICIENT')) {
+          <span class="rt-eco"><app-mi name="eco" [size]="12" />fuel-efficient</span>
+        }
+      </div>
+      @for (f of facts(t); track f.label) {
+        <div class="rt-row">
+          <span>{{ f.label }}</span>
+          <strong [style.color]="f.accent ?? null">{{ f.value }}</strong>
+        </div>
+      }
+      @if (!t.chosen) {
+        <div class="rt-cta">Click to use this route</div>
+      }
+    </div>
+  }
+
+  <div class="map-legend" style="max-height:168px;overflow-y:auto">
+    @for (s of segments(); track $index) {
+      <div class="legend-row">
+        <span class="legend-dash" [style.borderTopColor]="s.color"></span>
+        <span>{{ legendText(s) }}</span>
+        @if (roadKm(s); as km) {
+          <span style="margin-left:auto;color:var(--color-fg-4);font-size:11px">{{ km.toFixed(0) }} km road{{ s.alts.length > 1 ? ' · ' + s.alts.length + ' options' : '' }}</span>
+        }
+      </div>
+    }
+  </div>
+</div>

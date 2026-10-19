@@ -1,0 +1,64 @@
+<div class="module-legs">
+  <div class="module-head">
+    <div class="module-head-l">
+      <div>
+        <div class="module-title">Transport legs</div>
+        <div class="module-sub">
+          @if (state().multi) {
+            {{ state().legs.length }} leg{{ state().legs.length !== 1 ? 's' : '' }} · {{ (impact()?.distanceKm ?? 0).toFixed(0) }} km total · {{ (impact()?.gwp ?? 0).toFixed(1) }} kg CO₂e
+          } @else {
+            Using the direct route from the card above
+          }
+        </div>
+      </div>
+    </div>
+    <div class="module-head-r">
+      @if (state().multi) {
+        <select #tpl class="lca-select sm" style="width:auto" (change)="onTemplateSelect(tpl)">
+          <option value="">Load template…</option>
+          @for (t of templates(); track t.id) {
+            <option [value]="t.id">{{ t.label }}</option>
+          }
+        </select>
+      }
+      <app-toggle [big]="true" [on]="state().multi" (toggled)="toggle()" />
+      <span class="module-toggle-lbl">{{ state().multi ? 'Multi-leg on' : 'Off' }}</span>
+    </div>
+  </div>
+
+  @if (state().multi) {
+    <div class="legs-list">
+      @for (l of state().legs; track l.id; let i = $index) {
+        <app-leg-row [leg]="l" [index]="i" [source]="state().source" [massTonnes]="massTonnes()" [color]="colors[i % 6]"
+                     [calc]="store.legResult(i)" (legChange)="updateLeg(l.id, $event)" (remove)="removeLeg(l.id)" />
+      }
+    </div>
+    <div class="legs-foot">
+      <button class="btn" (click)="addLeg()"><app-mi name="add" [size]="18" color="#475467" />Add leg</button>
+      <div class="agg">
+        <div class="agg-item">
+          <div class="agg-l">Total distance</div>
+          <div class="agg-v">{{ (impact()?.distanceKm ?? 0).toFixed(0) }}<span class="u">km</span></div>
+        </div>
+        <div class="agg-item">
+          <div class="agg-l">Module rate</div>
+          <div class="agg-v">{{ impact()?.intensity ? impact()!.intensity.toFixed(4) : '—' }}<span class="u">kgCO₂e/t·km</span></div>
+        </div>
+        <div class="agg-item hl">
+          <div class="agg-l">Total</div>
+          <div class="agg-v">{{ (impact()?.gwp ?? 0).toFixed(1) }}<span class="u">kg CO₂e</span></div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="module-empty">
+      <div>The route is using the direct route from the card above. Enable multi-leg to add intermediate stops, switch modes mid-route, or apply a template.</div>
+      <div class="module-empty-templates">
+        <span class="label" style="margin-right:6px">Quick start:</span>
+        @for (t of templates().slice(0, 4); track t.id) {
+          <button class="tpl-pill" (click)="applyTemplate(t.id)">{{ t.label }}</button>
+        }
+      </div>
+    </div>
+  }
+</div>

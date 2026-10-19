@@ -1,0 +1,96 @@
+<div class="wizard-step">
+  <div class="step-head">
+    <h2>Create the route</h2>
+    <div class="desc">Set the origin and destination for the shipment and pick a transport mode. Add intermediate legs if the transport is not a single direct trip. The map at the bottom previews everything.</div>
+  </div>
+
+  <div class="card pad-lg leg-card">
+    <div class="stripe"></div>
+    <div class="card-head" style="margin-top:4px">
+      <div>
+        <div class="card-h3">Transport route</div>
+        <div class="card-desc">Where the cargo is picked up, where it is delivered, and how it travels.</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <span class="label">From</span>
+        <app-location-picker [value]="state().from" (valueChange)="setFrom($event)" placeholder="e.g. Mo i Rana, Norway" />
+      </div>
+      <div class="field">
+        <span class="label">To</span>
+        <app-location-picker [value]="state().to" (valueChange)="setTo($event)" placeholder="e.g. Oslo, Norway" />
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-start;margin:-6px 0 6px">
+      <button class="btn ghost" (click)="store.swap()" type="button" title="Swap origin and destination">
+        <app-mi name="swap_horiz" [size]="18" />Swap
+      </button>
+    </div>
+    <div class="distance-line">
+      <app-mi name="straighten" [size]="16" /><span>Great-circle</span><span class="km">{{ (result()?.greatCircleKm ?? 0).toFixed(0) }} km</span>
+      <app-mi name="arrow_forward" [size]="14" color="#9AA3AF" />
+      <span>{{ distanceLabel() }}</span>
+      <span class="km">{{ (direct()?.distanceKm ?? 0).toFixed(0) }} km</span>
+      @if (!isRoad() && direct()?.distanceSource !== 'manual') {
+        <span class="est-note">estimated — no road network for this mode</span>
+      }
+    </div>
+    <div class="field">
+      <span class="label">Transport mode</span>
+      <app-mode-selector [selected]="state().mode" [source]="state().source" (selectedChange)="store.setMode($event)" />
+    </div>
+    @if (!isRoad()) {
+      <div class="field">
+        <span class="label">Distance</span>
+        <app-distance-input [value]="state().manualDist" [unit]="state().distUnit" [estimateKm]="estimateKm()" (changed)="setManual($event)" />
+        <div class="field-help">Driving routes are not available for {{ modeLabel().toLowerCase() }}. Enter the actual distance in km or miles, or leave empty to use the estimate of {{ estimateKm().toFixed(0) }} km.</div>
+      </div>
+    }
+    <div class="field" style="margin-bottom:0">
+      <app-slider label="Load factor" [value]="state().loadFactor" [min]="15" [max]="100" [step]="1" unit="%" (valueChange)="store.patch({ loadFactor: $event })" />
+      <div class="field-help">Default for this mode: {{ ref.defaultLoad(state().mode) }}%. Lower load increases per-tonne·km emissions.</div>
+    </div>
+  </div>
+
+  @if (lastMessage(); as msg) {
+    <div class="validation-strip">
+      <div [class]="'val-row ' + validation()!.level">
+        <app-mi [name]="validation()!.level === 'error' ? 'error' : validation()!.level === 'warning' ? 'warning' : 'check_circle'" [size]="18" />
+        <span class="val-text">{{ msg.text }}</span>
+      </div>
+    </div>
+  }
+
+  <div class="add-legs" [class.open]="legsOpen()">
+    <button class="add-legs-head" type="button" (click)="legsOpen.set(!legsOpen())" [attr.aria-expanded]="legsOpen()">
+      <app-mi [name]="legsOpen() ? 'expand_less' : 'add'" [size]="20" />
+      <span class="al-text">
+        <span class="al-title">Add legs</span>
+        <span class="al-sub">Break the route into several legs — intermediate stops, mode changes, vehicle, fuel, load factor and return trips. Leave off to use the direct route above.</span>
+      </span>
+      @if (state().multi) {
+        <span class="mod-badge">{{ state().legs.length }} leg{{ state().legs.length !== 1 ? 's' : '' }}</span>
+      }
+    </button>
+    @if (legsOpen()) {
+      <div class="legs-wrap" style="padding:0 12px 14px">
+        <app-legs-editor />
+      </div>
+    }
+  </div>
+
+  <div class="step-map">
+    <div class="card map-card">
+      <div class="map-head">
+        <div>
+          <div class="card-h3">Route map &amp; suggested routes</div>
+          <div class="card-desc">{{ state().multi ? 'Each leg drawn as its own segment. ' : '' }}Google returns alternative road routes — hover one for its distance, drive time and GWP, click to use it.</div>
+        </div>
+        <span class="mod-badge"><app-mi [name]="state().multi ? 'alt_route' : 'public'" [size]="16" style="margin-right:4px" />{{ store.segments().length }} segment{{ store.segments().length !== 1 ? 's' : '' }}</span>
+      </div>
+      <app-map-view [segments]="store.segments()" [rateFor]="rateFor" [massTonnes]="result()?.impact?.massTonnes ?? 0"
+                    (pick)="store.pickRoute($event.key, $event.idx)" />
+    </div>
+  </div>
+</div>

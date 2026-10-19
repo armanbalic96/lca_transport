@@ -1,0 +1,111 @@
+<ng-template #tile let-label="label" let-value="value" let-unit="unit" let-sub="sub" let-accent="accent">
+  <div class="stat-tile">
+    <div class="stat-tile-l">{{ label }}</div>
+    <div class="stat-tile-v" [style.color]="accent ?? null">{{ value }}@if (unit) {<span class="u">{{ unit }}</span>}</div>
+    @if (sub) { <div class="stat-tile-s">{{ sub }}</div> }
+  </div>
+</ng-template>
+
+<div class="stats-wrap">
+  <!-- Total route analysis -->
+  <div class="card pad-lg">
+    <div class="card-head">
+      <div>
+        <div class="card-h3"><app-mi name="insights" [size]="18" style="margin-right:6px;vertical-align:-3px;color:var(--color-primary)" />Total route analysis</div>
+        <div class="card-desc">Aggregated statistics across the full route ({{ t().legCount }} leg{{ t().legCount !== 1 ? 's' : '' }}, {{ t().modeCount }} mode{{ t().modeCount !== 1 ? 's' : '' }}).</div>
+      </div>
+    </div>
+
+    <div class="stat-tiles">
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Total GWP', value: (t().gwp | fmt: 1), unit: 'kg CO₂e', accent: 'var(--color-primary)' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Total distance', value: (t().distanceKm | fmt: 0), unit: 'km' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Transport work', value: (t().tkm | fmt: 0), unit: 't·km' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Mean intensity', value: (t().intensity | fmt: 4), unit: 'kg/t·km', sub: 'GWP-weighted' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'GWP per km', value: (t().gwpPerKm | fmt: 3), unit: 'kg/km' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'GWP per kg', value: (t().gwpPerKg * 1000 | fmt: 2), unit: 'g/kg', sub: 'functional unit' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Mean GWP / leg', value: (t().meanPerLeg | fmt: 1), unit: 'kg' }" />
+      <ng-container *ngTemplateOutlet="tile; context: { label: 'Largest leg', value: top()?.key ?? '—', sub: top() ? (top()!.share | fmt: 0) + '% of total · ' + top()!.modeLabel : '', accent: top() ? '#127575' : null }" />
+    </div>
+
+    @if (stats().modeShares.length > 1) {
+      <div class="split-block">
+        <div class="split-head"><span>Contribution by transport mode</span></div>
+        <div class="modeshare-list">
+          @for (m of stats().modeShares; track m.label) {
+            <div class="modeshare-row">
+              <div class="ms-label">{{ m.label }}</div>
+              <div class="ms-bar-wrap"><div class="ms-bar" [style.width.%]="m.share > 2 ? m.share : 2"></div></div>
+              <div class="ms-val">{{ m.gwp | fmt: 1 }}<span class="u">kg</span> · {{ m.share | fmt: 0 }}%</div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Spread across legs -->
+  @if (impact().perLeg.length > 1) {
+    <div class="card pad-lg">
+      <div class="card-head">
+        <div>
+          <div class="card-h3"><app-mi name="legend_toggle" [size]="18" style="margin-right:6px;vertical-align:-3px;color:var(--color-primary)" />Spread across legs</div>
+          <div class="card-desc">How impact, distance and intensity vary over the {{ impact().perLeg.length }} legs.</div>
+        </div>
+      </div>
+      <div class="dist-grid">
+        @for (d of spread(); track d.title) {
+          <div class="dist-card">
+            <div class="dist-card-h">{{ d.title }} <span>{{ d.unit }}</span></div>
+            <div class="statbars">
+              @for (b of d.bars; track b.k) {
+                <div class="sb-col">
+                  <div class="sb-track">
+                    <div class="sb-fill" [class.std]="b.isStd" [style.height.%]="b.h">
+                      <span class="sb-val">{{ b.v | fmt: d.dec }}</span>
+                    </div>
+                  </div>
+                  <div class="sb-k">{{ b.k }}</div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- One analysis per leg -->
+  @for (r of impact().perLeg; track r.key; let i = $index) {
+    <div class="card pad-lg">
+      <div class="card-head">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div class="bd-tag" [style.background]="colors[i % 6]" style="color:#fff;min-width:40px">{{ r.key }}</div>
+          <div>
+            <div class="card-h3">{{ r.modeLabel }}@if (r.ret) {<span class="ret-pill">return</span>}</div>
+            <div class="card-desc">{{ city(r.from) }} → {{ city(r.to) }} · load {{ r.load | fmt: 0 }}%</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="stat-tile-v" style="margin-top:0" [style.color]="colors[i % 6]">{{ r.gwp | fmt: 1 }}<span class="u">kg CO₂e</span></div>
+          <div class="stat-tile-s">{{ r.share | fmt: 0 }}% of route total</div>
+        </div>
+      </div>
+
+      <div class="ld-bar-wrap" style="margin-bottom:16px">
+        <div class="ld-bar" [style.width.%]="r.share > 2 ? r.share : 2" [style.background]="colors[i % 6]"></div>
+      </div>
+
+      <div class="stat-tiles">
+        <ng-container *ngTemplateOutlet="tile; context: { label: 'Distance', value: (r.distanceKm * r.trips | fmt: 0), unit: 'km', sub: r.ret ? 'incl. empty return' : 'one-way' }" />
+        <ng-container *ngTemplateOutlet="tile; context: { label: 'Transport work', value: (r.tkm | fmt: 0), unit: 't·km' }" />
+        <ng-container *ngTemplateOutlet="tile; context: { label: 'Intensity', value: (r.effectiveEf | fmt: 4), unit: 'kg/t·km', sub: 'after vehicle, fuel & load' }" />
+        <ng-container *ngTemplateOutlet="tile; context: { label: 'GWP per km', value: ((r.distanceKm > 0 ? r.gwp / (r.distanceKm * r.trips) : 0) | fmt: 3), unit: 'kg/km' }" />
+      </div>
+
+      <div class="leg-formula" style="margin-top:14px">
+        <span class="leg-formula-tag">Calculation</span>
+        <span>{{ impact().massTonnes | fmt: 2 }} t × {{ r.distanceKm * r.trips | fmt: 0 }} km × {{ r.effectiveEf | fmt: 4 }} kg/t·km = <strong>{{ r.gwp | fmt: 2 }} kg CO₂e</strong></span>
+      </div>
+    </div>
+  }
+</div>

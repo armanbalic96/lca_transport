@@ -1,0 +1,11 @@
+// LCA Tools design system tokens + Transport GWP Calculator styling, ported from the Claude Design prototype.
+@use 'styles/tokens';
+@use 'styles/app';
+@use 'styles/wizard';
+
+html, body { margin: 0; padding: 0; height: 100%; background: #F4F6F7; }
+a { color: #127575; text-decoration: none; }
+a:hover { color: #00676F; text-decoration: underline; }
+
+// Additions for the Angular version (not in the prototype)
+.save-state { margin-left: 6px; font-weight: 500; color: var(--color-primary); }

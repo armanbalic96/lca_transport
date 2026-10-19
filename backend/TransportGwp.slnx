@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="TransportGwp.Api/TransportGwp.Api.csproj" />
+  <Project Path="TransportGwp.Application/TransportGwp.Application.csproj" />
+  <Project Path="TransportGwp.Domain/TransportGwp.Domain.csproj" />
+  <Project Path="TransportGwp.Infrastructure/TransportGwp.Infrastructure.csproj" />
+  <Project Path="TransportGwp.Tests/TransportGwp.Tests.csproj" />
+</Solution>
