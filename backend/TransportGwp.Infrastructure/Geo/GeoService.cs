@@ -124,8 +124,11 @@ namespace TransportGwp.Infrastructure.Geo
 
             using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(ct));
             var routes = doc.RootElement.TryGetProperty("routes", out var r) ? r.EnumerateArray().ToList() : [];
+            // Google often returns the fuel-efficient reference route identical to the default one: merge them.
             var result = routes
                 .Select(ParseRoute)
+                .GroupBy(a => (Math.Round(a.Km, 1), a.Seconds, a.Path.Count))
+                .Select(g => g.First() with { Labels = g.SelectMany(a => a.Labels).Distinct().ToList() })
                 .OrderBy(a => a.Km)
                 .Select((a, i) => a with { Index = i })
                 .ToList();

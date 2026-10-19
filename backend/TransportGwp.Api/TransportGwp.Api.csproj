@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\TransportGwp.Infrastructure\TransportGwp.Infrastructure.csproj" />
@@ -8,6 +8,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>03fa9e2a-df1c-4b91-bef9-0f621ecbb62d</UserSecretsId>
   </PropertyGroup>
 
 </Project>
